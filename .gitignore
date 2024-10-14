@@ -1,0 +1,9 @@
+.DS_Store
+message.txt
+todo
+env
+plume_videos
+PyDMDeep.egg-info
+commit.txt
+.vscode
+*.pyc

@@ -1,0 +1,17 @@
+[flake8]
+exclude =
+    .git,
+    .venv,
+    dist,
+    build,
+    site-packages,
+    bin,
+    __pycache__
+ignore =
+    W503         # Line break before binary operator - Conflicts black
+    E203         # Whitespace before ':' - Conflicts black
+max-line-length = 88
+import-order-style = smarkets
+statistics = True
+count = True
+verbose = 1

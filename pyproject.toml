@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=62", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PyDMDeep"
+dynamic = ["version"]
+dependencies = [
+  "mitosis>=0.5.2",
+  "pydmd",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "build",
+    "codespell",
+    "coverage[toml]",
+    "pytest>=6.2.4",
+    "ipython",
+    "pre-commit",
+    "pytest-cov",
+    "setuptools_scm",
+]
+
+[tool.setuptools]
+packages=["pydmdeep"]
+
+[tool.setuptools_scm]
