@@ -41,8 +41,8 @@ def generate_toy_dataset(
     def f2(x, t):
         return 2.0 / np.cosh(x) * np.tanh(x) * np.sin(w2 * t)
 
-    nx = 65 * 4  # number of grid points along space dimension
-    nt = 129 * 4  # number of grid points along time dimension
+    nx = nx * 4  # number of grid points along space dimension
+    nt = nt * 4  # number of grid points along time dimension
 
     # Define the space and time grid for data collection.
     x = np.linspace(-5, 5, nx)
