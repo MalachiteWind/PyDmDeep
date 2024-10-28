@@ -1,18 +1,17 @@
 # code from DMD tutorial
 # https://github.com/PyDMD/PyDMD/blob/master/tutorials/tutorial1/tutorial-1-dmd.ipynb
-from typing import Any
-from typing import Literal
-from typing import TypedDict
+from typing import Any, Literal, TypedDict
 
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from .types import Float1D
-from .types import Float2D
+from .types import Float1D, Float2D
 
 
 class ToyDataSet(TypedDict):
     data: Float2D
+    time_delay1: Float2D
+    time_delay2: Float2D
     f1_data: Float2D
     f2_data: Float2D
     noisy_data: Float2D
@@ -20,9 +19,16 @@ class ToyDataSet(TypedDict):
     tgrid: Float2D
 
 
+class TimeDelayMatrices(TypedDict):
+    time_delay1: Float2D
+    time_delay2: Float2D
+
+
 def generate_toy_dataset(
     w1: float = 2.3,
     w2: float = 2.8,
+    nx: int = 65,
+    nt: int = 129,
     noise_mean: float = 0,
     noise_std_dev: float = 0.2,
     seed: int = 1234,
@@ -53,8 +59,15 @@ def generate_toy_dataset(
     random_matrix = rng.normal(noise_mean, noise_std_dev, size=(nt, nx))
     Xn = X + random_matrix
 
+    # Construct time delay matrices.
+    time_delays = _construct_time_delay(X)
+    Y1 = time_delays["time_delay1"]
+    Y2 = time_delays["time_delay2"]
+
     return ToyDataSet(
         data=X,
+        time_delay1=Y1,
+        time_delay2=Y2,
         f1_data=X1,
         f2_data=X2,
         noisy_data=Xn,
@@ -75,7 +88,6 @@ def lorenz_ode(t: float, input: Literal[3], params: Literal[3]) -> Literal[3]:
 def generate_lorenz_data(
     t_lin: Float1D, initial_cond: Float1D, ode_method: str = "LSODA"
 ) -> Float2D:
-
     sigma = 10
     rho = 28
     beta = 8 / 3
@@ -90,3 +102,9 @@ def generate_lorenz_data(
         t_eval=t_lin,
         method=ode_method,
     )
+
+
+def _construct_time_delay(data: Float2D) -> TimeDelayMatrices:
+    X = data[:, :-1]
+    Y = data[:, 1:]
+    return TimeDelayMatrices(time_delay1=X, time_delay2=Y)
