@@ -1,11 +1,14 @@
 # code from DMD tutorial
 # https://github.com/PyDMD/PyDMD/blob/master/tutorials/tutorial1/tutorial-1-dmd.ipynb
-from typing import Any, Literal, TypedDict
+from typing import Any
+from typing import Literal
+from typing import TypedDict
 
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from .types import Float1D, Float2D
+from .types import Float1D
+from .types import Float2D
 
 
 class ToyDataSet(TypedDict):
@@ -27,12 +30,40 @@ class TimeDelayMatrices(TypedDict):
 def generate_toy_dataset(
     w1: float = 2.3,
     w2: float = 2.8,
-    nx: int = 65,
-    nt: int = 129,
+    nx: int = 65 * 4,
+    nt: int = 129 * 4,
     noise_mean: float = 0,
     noise_std_dev: float = 0.2,
     seed: int = 1234,
 ) -> ToyDataSet:
+    """
+    Create 1-spatioal dimesion dataset consisting of two interacting spatial modes
+    with differeing frequencies.
+
+    Note: time_delays returned are transposed in convention with DMD notation.
+
+    Parameters:
+    ----------
+    w1: frequency for first spatial mode.
+    w2: frequency for second spatial mode.
+    nx: number of spatial collocation points.
+    nt: number of temporal collocation points.
+    noise_mean: noise to add to data
+    noise_std_dev: noise to add to data
+    seed: random number generator seed
+
+    Returns:
+    --------
+    X: data with shape (nt, nx)
+    f1_data: first spatial mode corresponding to freq w1. Shape (nt, nx)
+    f2_data: second spatial mode corresponding to freq w2. Shape (nt,nx)
+    time_delay1: current state matrix for time delay. Shape (nx, nt-1)
+    time_delay2: future state matrix for time delay. Shape (nx, nt-1)
+    noisey_data: X with noise added
+    x_grid: for plotting
+    t_grid: for plotting
+
+    """
     rng = np.random.default_rng(seed=seed)
 
     def f1(x, t):
@@ -40,9 +71,6 @@ def generate_toy_dataset(
 
     def f2(x, t):
         return 2.0 / np.cosh(x) * np.tanh(x) * np.sin(w2 * t)
-
-    nx = nx * 4  # number of grid points along space dimension
-    nt = nt * 4  # number of grid points along time dimension
 
     # Define the space and time grid for data collection.
     x = np.linspace(-5, 5, nx)
@@ -60,7 +88,7 @@ def generate_toy_dataset(
     Xn = X + random_matrix
 
     # Construct time delay matrices.
-    time_delays = _construct_time_delay(X)
+    time_delays = _construct_time_delay(X.T)
     Y1 = time_delays["time_delay1"]
     Y2 = time_delays["time_delay2"]
 
