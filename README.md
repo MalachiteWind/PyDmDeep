@@ -16,3 +16,11 @@ pydmdeep.post
 
 ![](images/toy_dataset.png)
 ![](images/plumes.png)
+
+# Pytorch
+For setting up pytorch on Matrix or Vector, execute
+```console
+pip3 install torch torchvision torchaudio
+```
+
+For other local/remote installations follow guide at [pytorch installation guide](https://pytorch.org/get-started/locally/).
