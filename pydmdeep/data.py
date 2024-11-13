@@ -4,15 +4,11 @@ from typing import Any
 from typing import Literal
 from typing import TypedDict
 
-import warnings
 import numpy as np
-import torch
 from scipy.integrate import solve_ivp
-
 
 from .types import Float1D
 from .types import Float2D
-from .types import Int1D
 
 
 class ToyDataSet(TypedDict):
@@ -144,11 +140,3 @@ def _construct_time_delay(data: Float2D) -> TimeDelayMatrices:
     X = data[:, :-1]
     Y = data[:, 1:]
     return TimeDelayMatrices(time_delay1=X, time_delay2=Y)
-
-
-
-
-
-
-
-

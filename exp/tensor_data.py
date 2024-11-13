@@ -1,28 +1,31 @@
-from pydmdeep.data import generate_toy_dataset
 import warnings
+from typing import List
+
+import numpy as np
+import torch
+from numpy.random import Generator
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import TensorDataset
-import numpy as np
-from numpy.random import Generator
-import torch
-from pydmdeep.types import Float2D, Int1D, Float3D
-from typing import List
+
+from pydmdeep.data import generate_toy_dataset
+from pydmdeep.types import Float2D
+from pydmdeep.types import Float3D
+from pydmdeep.types import Int1D
 
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
 
-
-def run(seed:int, lags:int,train_len:float):
+def run(seed: int, lags: int, train_len: float):
     rng = np.random.default_rng(seed=seed)
     if DEVICE == "CPU":
         warnings.warn("Using CPU instead of cuda.", stacklevel=2)
 
-    dataset = generate_toy_dataset(tmax=8*np.pi,nt =129*8,nx= 65*8)
-    U,S,Vh = np.linalg.svd(dataset["time_delay1"])
+    dataset = generate_toy_dataset(tmax=8 * np.pi, nt=129 * 8, nx=65 * 8)
+    U, S, Vh = np.linalg.svd(dataset["time_delay1"])
 
     nt, nx = Vh.shape
 
-    train_idx, val_idx = _train_val_idxs(nt-lags,train_len=train_len, rng=rng)
+    train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
     test_idx = val_idx[1::2]
     val_idx = val_idx[::2]
 
@@ -31,52 +34,53 @@ def run(seed:int, lags:int,train_len:float):
 
     Vh_transformed = min_max_scalaer.transform(Vh)
 
-    data_seq_in, data_seq_out = _create_data_seq(Vh_transformed,lags=lags)
-    
+    data_seq_in, data_seq_out = _create_data_seq(Vh_transformed, lags=lags)
+
     train, val, test = create_tensor_data(
-        data_seq_in,
-        data_seq_out,
-        idxs=[train_idx,val_idx,test_idx],
-        device=DEVICE
+        data_seq_in, data_seq_out, idxs=[train_idx, val_idx, test_idx], device=DEVICE
     )
 
     results = {
-        "main": (train,val,test),
+        "main": (train, val, test),
         "transformer": min_max_scalaer,
         "dataset": dataset,
     }
-    
+
     return results
 
-def create_tensor_data(in_data:Float2D, out_data:Float2D, idxs: List[Int1D], device:str):
+
+def create_tensor_data(
+    in_data: Float2D, out_data: Float2D, idxs: List[Int1D], device: str
+):
     """
-    Convert data_sequences and target labels to TensorDataset based on desired indicies.
-    Send data to gpu. 
+    Convert data_sequences and target labels to TensorDataset based on desired indices.
+    Send data to gpu.
 
     Parameters:
     ----------
     in_data: input data sequence
     out_data: target_labels
-    idxs: List of indicies to split into seperate Tensordatasets. i.e. train/val/test.
+    idxs: List of indices to split into separate Tensordatasets. i.e. train/val/test.
     device: where to store data on. `cuda` or `cpu`.
 
     Returns:
     -------
-    tensor_dataset: list of TensorDatasets to be passed into Dataloaders or torch module.
+    tensor_dataset: list of TensorDatasets to be passed to Dataloaders or torch module.
 
     """
     tensor_datasets = []
     for idx in idxs:
-        in_data_tensor = torch.tensor(in_data[idx],dtype =torch.float32).to(device)
-        out_data_tensor = torch.tensor(out_data[idx],dtype =torch.float32).to(device)
-        tensor_datasets.append(TensorDataset(in_data_tensor,out_data_tensor))
+        in_data_tensor = torch.tensor(in_data[idx], dtype=torch.float32).to(device)
+        out_data_tensor = torch.tensor(out_data[idx], dtype=torch.float32).to(device)
+        tensor_datasets.append(TensorDataset(in_data_tensor, out_data_tensor))
     return tensor_datasets
 
-def _create_data_seq(data:Float2D, lags:int) -> tuple[Float3D, Float2D]:
+
+def _create_data_seq(data: Float2D, lags: int) -> tuple[Float3D, Float2D]:
     """
-    Convert dataset into data sequences (both input and output targets) for LSTM 
+    Convert dataset into data sequences (both input and output targets) for LSTM
     learning.
-    
+
     Parameters:
     ----------
     data: matrix containing timeseries (nt,nx)
@@ -85,20 +89,23 @@ def _create_data_seq(data:Float2D, lags:int) -> tuple[Float3D, Float2D]:
     Returns:
     -------
     data_seq_in: sequence inputs
-    data_seq_out: target labels for sequences. 
+    data_seq_out: target labels for sequences.
     """
     nt, nx = data.shape
-    data_seq_in = np.zeros((nt-lags,lags,nx))
-    data_seq_out = np.zeros(((nt-lags,nx)))
-    for idx in range(nt-lags):
-        data_seq_in[idx] = data[idx:idx+lags]
-        data_seq_out[idx] = data[idx+lags]
+    data_seq_in = np.zeros((nt - lags, lags, nx))
+    data_seq_out = np.zeros(((nt - lags, nx)))
+    for idx in range(nt - lags):
+        data_seq_in[idx] = data[idx : idx + lags]
+        data_seq_out[idx] = data[idx + lags]
     return data_seq_in, data_seq_out
 
-def _train_val_idxs(n_len: int, train_len: float,rng:Generator) -> tuple[Int1D, Int1D]:
+
+def _train_val_idxs(
+    n_len: int, train_len: float, rng: Generator
+) -> tuple[Int1D, Int1D]:
     """
-    Create train and val/test indices for n_len indicies where train_len inidicates
-    number of indicies to be used for training.
+    Create train and val/test indices for n_len indices where train_len indicates
+    number of indices to be used for training.
     """
     idxs = np.arange(n_len)
     rng.shuffle(idxs)
