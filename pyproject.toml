@@ -28,3 +28,7 @@ dev = [
 packages=["pydmdeep", "exp"]
 
 [tool.setuptools_scm]
+
+[tool.mitosis.steps]
+data = ["exp.tensor_data:run", "exp.config:tensor_data_lookup"]
+
