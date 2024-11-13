@@ -46,7 +46,7 @@ def run(seed: int, lags: int, train_len: float):
         "dataset": dataset,
     }
 
-    return results
+    return {"data": results}
 
 
 def create_tensor_data(
