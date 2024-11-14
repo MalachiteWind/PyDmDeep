@@ -16,6 +16,15 @@ DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
 
 def run(seed: int, lags: int, train_len: float):
+    """
+    Create train/val/test TensorDataset to be passed through LSTM network.
+
+    Parameters:
+    -----------
+    seed: randomization seed for reproduciabiilty.
+    lags: number of right singular vectors to be used for lstm training input.
+    train_len: percentage of data to be used for training.
+    """
     rng = np.random.default_rng(seed=seed)
     if DEVICE == "CPU":
         warnings.warn("Using CPU instead of cuda.", stacklevel=2)
