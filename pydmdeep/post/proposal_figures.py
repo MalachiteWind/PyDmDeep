@@ -1,14 +1,20 @@
+from typing import Optional
+
 import matplotlib.pyplot as plt
 from plumex.config import data_lookup
 
 from ..data import generate_toy_dataset
+from ..data import ToyDataSet
 from .utils import _load_video
 from .utils import plot_raw_frames
 
 
-def plot_toy_dataset():
+def plot_toy_dataset(dataset: Optional[ToyDataSet] = None):
 
-    dataset = generate_toy_dataset()
+    if dataset:
+        pass
+    else:
+        dataset = generate_toy_dataset()
 
     titles = ["$f_1(x,t)$", "$f_2(x,t)$", "$f = f_1 + f_2$"]
     data = [dataset["f1_data"], dataset["f2_data"], dataset["data"]]

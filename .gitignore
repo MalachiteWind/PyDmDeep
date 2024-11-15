@@ -7,3 +7,5 @@ PyDMDeep.egg-info
 commit.txt
 .vscode
 *.pyc
+trials
+ex.sh

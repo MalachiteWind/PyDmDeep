@@ -30,6 +30,10 @@ class TimeDelayMatrices(TypedDict):
 def generate_toy_dataset(
     w1: float = 2.3,
     w2: float = 2.8,
+    tmin: float = 0,
+    tmax: float = 4 * np.pi,
+    xmin: float = -5,
+    xmax: float = 5,
     nx: int = 65 * 4,
     nt: int = 129 * 4,
     noise_mean: float = 0,
@@ -73,8 +77,8 @@ def generate_toy_dataset(
         return 2.0 / np.cosh(x) * np.tanh(x) * np.sin(w2 * t)
 
     # Define the space and time grid for data collection.
-    x = np.linspace(-5, 5, nx)
-    t = np.linspace(0, 4 * np.pi, nt)
+    x = np.linspace(xmin, xmax, nx)
+    t = np.linspace(tmin, tmax, nt)
     xgrid, tgrid = np.meshgrid(x, t)
     # dt = t[1] - t[0]  # time step between each snapshot
 
