@@ -1,8 +1,7 @@
 import torch.nn as nn
 import torch.optim as optim
 
-tensor_data_lookup = {
-}
+tensor_data_lookup = {}
 
 
 lstm_train_lookup = {

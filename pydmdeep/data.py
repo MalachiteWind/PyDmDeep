@@ -1,6 +1,5 @@
 # code from DMD tutorial
 # https://github.com/PyDMD/PyDMD/blob/master/tutorials/tutorial1/tutorial-1-dmd.ipynb
-from typing import Any
 from typing import Literal
 from typing import TypedDict
 

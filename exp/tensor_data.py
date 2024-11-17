@@ -60,7 +60,7 @@ def run(seed: int, lags: int, train_len: float):
 
 def create_tensor_data(
     in_data: Float2D, out_data: Float2D, idxs: List[Int1D], device: str
-)->List[TensorDataset]:
+) -> List[TensorDataset]:
     """
     Convert data_sequences and target labels to TensorDataset based on desired indices.
     Send data to gpu.
