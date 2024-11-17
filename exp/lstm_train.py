@@ -42,7 +42,7 @@ def run(
     set_seed(seed=seed)
 
     # Load data
-    train, val, test = data["main"]
+    train, val, test = data["tensor_dataset"]
     min_max_scaler = data["transformer"]
     dataset = data["dataset"]
 
