@@ -34,6 +34,9 @@ def plot_plumes_image():
     video, orig_center_fc = _load_video(data_lookup["filename"]["low-869"])
     plot_raw_frames(video=video[599:], n_frames=4, n_rows=1, n_cols=4)
 
+def run():
+    plot_toy_dataset()
+    plot_plumes_image()
 
-plot_toy_dataset()
-plot_plumes_image()
+if __name__ == "__main__":
+    run()
