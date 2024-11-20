@@ -21,7 +21,6 @@ def run(data: dict):
     ax[0].set_title("Original Data", fontsize=15)
     ax[0].set_xlabel("space", fontsize=12)
     ax[0].set_ylabel("Time", fontsize=12)
-    # ax[0].set_colorbar()
 
     # plot Dmd Reconstruction
     d=2
@@ -38,30 +37,14 @@ def run(data: dict):
     ax[2].set_xlabel("space", fontsize=12)
 
     # plot DMD+lstm
-
+    ...
     fig.colorbar(im0,ax=ax[0])
     fig.colorbar(im1,ax=ax[1])
 
-
-
-
-
-
-
-
-
-
-    
-    
-    
-    
-    
-
-    # Plot DMD rollout
-
-    # Plot DMDeep rollout 
-
-    # DMD inherit form has exp(w_i t)
-    # so to capture the real parts need to do conjugate pairs to include all relevent information since we are inhernetly neglecting the imaginary component
-    # So if you data is a strucutre that is only rank n, we need to embed so that when applying DMD we can do a rank 2n svd.
+    # Regular LSTM 
     ...
+
+    # Do train/test split to see rollout 
+
+    # Metric of different reconstruction task
+    return {"main": None}
