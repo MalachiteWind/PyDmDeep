@@ -1,6 +1,10 @@
 import warnings
 from typing import List
+<<<<<<< HEAD
 from typing import Literal
+=======
+from typing import Optional
+>>>>>>> 6564976 (feat: add dmd mitosis step)
 
 import matplotlib.pyplot as plt
 import numpy as np

@@ -7,8 +7,9 @@ name = "PyDMDeep"
 dynamic = ["version"]
 dependencies = [
   "mitosis>=0.5.2",
-  "pydmd",
+  "pydmd>=2024.11.1",
   "matplotlib",
+  "torch"
 ]
 
 [project.optional-dependencies]
@@ -32,3 +33,4 @@ packages=["pydmdeep", "exp"]
 [tool.mitosis.steps]
 data = ["exp.tensor_data:run", "exp.config:tensor_data_lookup"]
 lstm = ["exp.lstm_train:run", "exp.config:lstm_train_lookup"]
+dmd = ["exp.dmd:run", "exp.config:dmd_lookup"]
