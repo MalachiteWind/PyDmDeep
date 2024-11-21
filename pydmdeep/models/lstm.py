@@ -6,7 +6,7 @@ import torch.optim.optimizer
 from torch.utils.data import DataLoader
 
 from ..types import Float1D
-
+from ..types import Float2D
 
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
@@ -35,21 +35,23 @@ def model_trainer(
     optimizer: torch.optim.Optimizer,
     loss_criterion: nn.Module,
     device: Literal["cuda", "CPU"],
+    lags: int,
+    epoch_test_dataset: Float2D,
     minimum_loss_decrease: float = 1e-5,
     patience: int = 10,
 ) -> Float1D:
     # total_train_iterations = len(dataloader) * epochs
     # loop = tqdm(total=total_train_iterations, position=0)
 
+    d_len = epoch_test_dataset.shape[1]
     best_loss = np.inf
     patience_counter = 0
     epoch_losses = []
+    reconstruct_losses = []
     for epoch in range(epochs):
         epoch_loss = 0.0
         for data, target in dataloader:
             data, target = data.to(device), target.to(device)
-            # x = x.cuda(non_blocking=True).float()
-            # y = y.cuda(non_blocking=True).long()
 
             optimizer.zero_grad()
             target_pred = model(data)
@@ -61,6 +63,17 @@ def model_trainer(
 
             epoch_loss += loss.item()
         epoch_loss /= len(dataloader)
+
+        Vhat, Vh = reconstruct_V(
+            time_delay=epoch_test_dataset,
+            model=model,
+            d_len=d_len,
+            lags=lags,
+            device=DEVICE
+        )
+
+        reconstruct_err = torch.linalg.norm(Vhat - Vh, ord="fro")
+        reconstruct_losses.append(reconstruct_err.item())
 
         if best_loss - epoch_loss >= minimum_loss_decrease:
             best_loss = epoch_loss
@@ -78,4 +91,25 @@ def model_trainer(
         epoch_losses.append(epoch_loss)
     # loop.close()
 
-    return np.array(epoch_losses)
+    return np.array(epoch_losses), np.array(reconstruct_losses)
+
+
+def reconstruct_V(
+    time_delay: Float2D, 
+    model: LSTMModel, 
+    d_len: int, 
+    lags: int, 
+    device: str
+) -> tuple[Float2D, Float2D]:
+    num_predicted_steps = d_len - lags
+    _, _, Vh = np.linalg.svd(time_delay)
+    Vhat = Vh[:lags, :]
+    Vhat = torch.Tensor(Vhat)
+    Vhat = Vhat.to(device)
+
+    for i in range(num_predicted_steps):
+        Vhat_sub = Vhat[i : (lags + i), :]
+        Vhat_pred = model(Vhat_sub.unsqueeze(0))
+        Vhat_pred.detach_()
+        Vhat = torch.vstack((Vhat, Vhat_pred))
+    return Vhat, Vh

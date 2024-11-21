@@ -10,10 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import TensorDataset
 
 from pydmdeep.data import generate_toy_dataset
-from pydmdeep.types import Float1D
-from pydmdeep.types import Float2D
-from pydmdeep.types import Float3D
-from pydmdeep.types import Int1D
+from pydmdeep.types import Float1D, Float2D, Float3D, Int1D
 
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
@@ -56,11 +53,11 @@ def run(seed: int, lags: int, train_len: float):
         "tensor_dataset": (train, val, test),
         "transformer": min_max_scalaer,
         "dataset": dataset,
+        "lags": lags,
     }
 
     explained_variance = S**2 / np.sum(S**2)
     plot_explained_variance(explained_variance)
-
 
     return {"main": None, "data": results}
 
@@ -128,15 +125,15 @@ def _train_val_idxs(
     n_train = int(n_len * train_len)
     return idxs[:n_train], idxs[n_train:]
 
-def plot_explained_variance(explained_variance: Float1D, cumulative: bool = True) -> Figure:
+
+def plot_explained_variance(explained_variance: Float1D) -> Figure:
     fig, ax = plt.subplots(figsize=(8, 6))
-    if cumulative:
-        explained_variance = np.cumsum(explained_variance)
+    explained_variance = np.cumsum(explained_variance)
 
     ax.scatter(
         range(1, explained_variance.shape[0] + 1),
         explained_variance * 100,
-        label="Variance %"
+        label="Variance %",
     )
 
     ax.set_xlabel("Singular Value Index")

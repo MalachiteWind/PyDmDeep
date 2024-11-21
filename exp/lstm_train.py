@@ -8,8 +8,7 @@ import torch.nn as nn
 from matplotlib.figure import Figure
 from torch.utils.data import DataLoader
 
-from pydmdeep.models.lstm import LSTMModel
-from pydmdeep.models.lstm import model_trainer
+from pydmdeep.models.lstm import LSTMModel, model_trainer
 from pydmdeep.types import Float1D
 
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
@@ -41,10 +40,13 @@ def run(
     # set seed
     set_seed(seed=seed)
 
+    lags = data["lags"]
+
     # Load data
     train, val, test = data["tensor_dataset"]
     min_max_scaler = data["transformer"]
     dataset = data["dataset"]
+    time_delay_test = dataset["time_delay1"]
 
     if (
         train.tensors[0].device == "CPU"
@@ -67,18 +69,21 @@ def run(
     loss = loss()
 
     train_dataloader = DataLoader(dataset=train, **dataloader_kws)
-    train_losses = model_trainer(
+    train_losses, reconstruction_losses = model_trainer(
         model=lstm_model,
         epochs=num_epochs,
         dataloader=train_dataloader,
         optimizer=optimizer,
         loss_criterion=loss,
         device=DEVICE,
+        lags=lags,
+        epoch_test_dataset=time_delay_test,
     )
 
     plot_train_loss(train_losses)
+    plot_reconstruction_loss(reconstruction_losses)
 
-    return {"main": train_losses[-1]}
+    return {"main": train_losses[-1], "reconstruction": reconstruction_losses[-1]}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:
@@ -88,6 +93,17 @@ def plot_train_loss(train_loss: Float1D) -> Figure:
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
     ax.set_title("Training Loss")
+    ax.legend()
+    ax.grid(True)
+    return fig
+
+def plot_reconstruction_loss(reconstruction_loss: Float1D) -> Figure:
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    ax.plot(reconstruction_loss, label="error", color="b", linewidth=2)
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Error")
+    ax.set_title("Reconstruction Error")
     ax.legend()
     ax.grid(True)
     return fig
