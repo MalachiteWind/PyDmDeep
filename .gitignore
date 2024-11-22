@@ -9,3 +9,4 @@ commit.txt
 *.pyc
 trials
 ex.sh
+nohup.out

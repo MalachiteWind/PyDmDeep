@@ -64,16 +64,21 @@ def model_trainer(
             epoch_loss += loss.item()
         epoch_loss /= len(dataloader)
 
-        Vhat, Vh = reconstruct_V(
-            time_delay=epoch_test_dataset,
-            model=model,
-            d_len=d_len,
-            lags=lags,
-            device=DEVICE
-        )
+        model.eval()
 
-        reconstruct_err = torch.linalg.norm(Vhat - Vh, ord="fro")
-        reconstruct_losses.append(reconstruct_err.item())
+        with torch.no_grad():
+            Vhat, Vh = reconstruct_V(
+                time_delay=epoch_test_dataset,
+                model=model,
+                d_len=d_len,
+                lags=lags,
+                device=DEVICE
+            )
+
+            reconstruct_err = torch.linalg.norm(Vhat - Vh, ord="fro")
+            reconstruct_losses.append(reconstruct_err.item())
+        
+        model.train()
 
         if best_loss - epoch_loss >= minimum_loss_decrease:
             best_loss = epoch_loss
@@ -101,8 +106,9 @@ def reconstruct_V(
     lags: int, 
     device: str
 ) -> tuple[Float2D, Float2D]:
-    num_predicted_steps = d_len - lags
+    num_predicted_steps = d_len - lags # check if should be n_len
     _, _, Vh = np.linalg.svd(time_delay)
+    Vh = torch.Tensor(Vh).to(device)
     Vhat = Vh[:lags, :]
     Vhat = torch.Tensor(Vhat)
     Vhat = Vhat.to(device)
@@ -110,6 +116,6 @@ def reconstruct_V(
     for i in range(num_predicted_steps):
         Vhat_sub = Vhat[i : (lags + i), :]
         Vhat_pred = model(Vhat_sub.unsqueeze(0))
-        Vhat_pred.detach_()
+        # Vhat_pred.detach_()
         Vhat = torch.vstack((Vhat, Vhat_pred))
     return Vhat, Vh

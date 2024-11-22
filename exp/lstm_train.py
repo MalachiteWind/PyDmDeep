@@ -69,7 +69,7 @@ def run(
     loss = loss()
 
     train_dataloader = DataLoader(dataset=train, **dataloader_kws)
-    train_losses, reconstruction_losses = model_trainer(
+    train_losses, reconstruction_errors = model_trainer(
         model=lstm_model,
         epochs=num_epochs,
         dataloader=train_dataloader,
@@ -81,9 +81,9 @@ def run(
     )
 
     plot_train_loss(train_losses)
-    plot_reconstruction_loss(reconstruction_losses)
+    plot_reconstruction_loss(reconstruction_errors)
 
-    return {"main": train_losses[-1], "reconstruction": reconstruction_losses[-1]}
+    return {"main": train_losses[-1], "reconstruction": reconstruction_errors[-1]}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:
