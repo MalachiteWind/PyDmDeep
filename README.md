@@ -6,12 +6,18 @@ Currently two different datasets are being used for benchmarking and experiments
 
 
 # Figures and Plots
-All figures used for paper (and related documents, *e.g.*, project proposal) will be found in the `pydmdeep.post` submodule.
+All figures used for paper (and related documents, *e.g.*, project proposal) will be found in the `pydmdeep.post` subpackage.
 
 ## MWE: producing figures
+To construct all figures simply run
 ```python
-import pydmdeep.post
-pydmdeep.post
+import pydmdeep.post as post
+post.run()
+```
+
+Or run specific post submodules for specific figures, _i.e._, 
+```python
+post.propsal_figures.run()
 ```
 
 ![](images/toy_dataset.png)

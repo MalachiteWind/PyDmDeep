@@ -30,20 +30,20 @@ def run(seed: int, lags: int, train_len: float):
         warnings.warn("Using CPU instead of cuda.", stacklevel=2)
 
     dataset = generate_toy_dataset(tmax=8 * np.pi, nt=129 * 8, nx=65 * 8)
-    U, S, Vh = np.linalg.svd(dataset["time_delay1"])
+    U, S, Vh = np.linalg.svd(dataset["time_delay1"],full_matrices=False)
 
-    nt, nx = Vh.shape
+    nx, nt = Vh.shape
 
     train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
     test_idx = val_idx[1::2]
     val_idx = val_idx[::2]
 
-    min_max_scalaer = MinMaxScaler()
-    min_max_scalaer.fit(Vh[train_idx])
+    min_max_scalar = MinMaxScaler()
+    min_max_scalar.fit(Vh.T[train_idx])
 
-    Vh_transformed = min_max_scalaer.transform(Vh)
+    V_scaled = min_max_scalar.transform(Vh.T)
 
-    data_seq_in, data_seq_out = _create_data_seq(Vh_transformed, lags=lags)
+    data_seq_in, data_seq_out = _create_data_seq(V_scaled, lags=lags)
 
     train, val, test = create_tensor_data(
         data_seq_in, data_seq_out, idxs=[train_idx, val_idx, test_idx], device=DEVICE
@@ -51,7 +51,7 @@ def run(seed: int, lags: int, train_len: float):
 
     results = {
         "tensor_dataset": (train, val, test),
-        "transformer": min_max_scalaer,
+        "transformer": min_max_scalar,
         "dataset": dataset,
         "lags": lags,
     }
