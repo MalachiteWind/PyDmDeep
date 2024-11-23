@@ -7,8 +7,7 @@ from typing import cast
 
 def run(data: dict):
 
-
-    dataset = cast(ToyDataSet,data["dataset"])
+    dataset = cast(ToyDataSet,data["prev_data"]["dataset"])
     X_orig = dataset["data"]
     x_grid = dataset["xgrid"]
     t_grid = dataset["tgrid"]
