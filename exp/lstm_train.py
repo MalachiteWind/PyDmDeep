@@ -83,7 +83,15 @@ def run(
     plot_train_loss(train_losses)
     plot_reconstruction_loss(reconstruction_errors)
 
-    return {"main": train_losses[-1], "reconstruction": reconstruction_errors[-1]}
+    results = {
+        "train_losses": train_losses,
+        "reconstruction": reconstruction_errors,
+        "lstm_mode": lstm_model,
+        "prev_data": data
+    }
+    
+
+    return {"main": train_losses[-1], "data": results}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:

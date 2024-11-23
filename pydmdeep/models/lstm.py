@@ -40,10 +40,11 @@ def model_trainer(
     minimum_loss_decrease: float = 1e-5,
     patience: int = 10,
 ) -> Float1D:
-    # total_train_iterations = len(dataloader) * epochs
-    # loop = tqdm(total=total_train_iterations, position=0)
+    '''
+    epoch_test_dataset: shape = (nx,nt)
+    '''
 
-    d_len = epoch_test_dataset.shape[1]
+    t_len = epoch_test_dataset.shape[1]
     best_loss = np.inf
     patience_counter = 0
     epoch_losses = []
@@ -70,12 +71,12 @@ def model_trainer(
             Vhat, Vh = reconstruct_V(
                 time_delay=epoch_test_dataset,
                 model=model,
-                d_len=d_len,
+                t_len=t_len,
                 lags=lags,
                 device=DEVICE
             )
 
-            reconstruct_err = torch.linalg.norm(Vhat - Vh, ord="fro")
+            reconstruct_err = torch.linalg.norm(Vhat - Vh.T, ord="fro") / torch.linalg.norm(Vh,ord="fro")
             reconstruct_losses.append(reconstruct_err.item())
         
         model.train()
@@ -102,20 +103,22 @@ def model_trainer(
 def reconstruct_V(
     time_delay: Float2D, 
     model: LSTMModel, 
-    d_len: int, 
+    t_len: int, 
     lags: int, 
     device: str
 ) -> tuple[Float2D, Float2D]:
-    num_predicted_steps = d_len - lags # check if should be n_len
-    _, _, Vh = np.linalg.svd(time_delay)
+    '''
+    time_delay: shape=(nx,nt)
+    '''
+    num_predicted_steps = t_len - lags # check if should be n_len
+    _, _, Vh = np.linalg.svd(time_delay,full_matrices=False)
     Vh = torch.Tensor(Vh).to(device)
-    Vhat = Vh[:lags, :]
+    Vhat = Vh.T[:lags, :]
     Vhat = torch.Tensor(Vhat)
     Vhat = Vhat.to(device)
 
     for i in range(num_predicted_steps):
         Vhat_sub = Vhat[i : (lags + i), :]
         Vhat_pred = model(Vhat_sub.unsqueeze(0))
-        # Vhat_pred.detach_()
         Vhat = torch.vstack((Vhat, Vhat_pred))
     return Vhat, Vh
