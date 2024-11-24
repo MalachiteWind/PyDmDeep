@@ -1,5 +1,6 @@
 import warnings
 from typing import List
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,6 +8,7 @@ import torch
 from matplotlib.figure import Figure
 from numpy.random import Generator
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from torch.utils.data import TensorDataset
 
 from pydmdeep.data import generate_toy_dataset
@@ -15,7 +17,7 @@ from pydmdeep.types import Float1D, Float2D, Float3D, Int1D
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
 
-def run(seed: int, lags: int, train_len: float):
+def run(seed: int, lags: int, train_len: float, scaler: Literal["minmax","std"]):
     """
     Create train/val/test TensorDataset to be passed through LSTM network.
 
@@ -37,11 +39,16 @@ def run(seed: int, lags: int, train_len: float):
     train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
     test_idx = val_idx[1::2]
     val_idx = val_idx[::2]
+    if scaler=="minmax":
+        data_transformer = MinMaxScaler()
+    elif scaler == "std":
+        data_transformer = StandardScaler()
+    else:
+        raise ValueError(f"scaler literal: '{scaler}' not accepted.")
 
-    min_max_scalar = MinMaxScaler()
-    min_max_scalar.fit(Vh.T[train_idx])
+    data_transformer.fit(Vh.T[train_idx])
 
-    V_scaled = min_max_scalar.transform(Vh.T)
+    V_scaled = data_transformer.transform(Vh.T)
 
     data_seq_in, data_seq_out = _create_data_seq(V_scaled, lags=lags)
 
@@ -51,7 +58,7 @@ def run(seed: int, lags: int, train_len: float):
 
     results = {
         "tensor_dataset": (train, val, test),
-        "transformer": min_max_scalar,
+        "transformer": data_transformer,
         "dataset": dataset,
         "lags": lags,
     }
