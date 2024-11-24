@@ -1,6 +1,7 @@
 import warnings
 from typing import Any
 from typing import Optional
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,14 +10,15 @@ import torch.nn as nn
 from matplotlib.figure import Figure
 from torch.utils.data import DataLoader
 
-from pydmdeep.models.lstm import LSTMModel, model_trainer
+from pydmdeep.models.lstm import LSTMModel, model_trainer, reconstruct_V
 from pydmdeep.types import Float1D
+from pydmdeep.types import Float2D
 
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
 
 def run(
-    data: dict,
+    data: dict[Any],
     opt: tuple[torch.optim.Optimizer, dict[Any]],
     loss: nn.Module,
     dataloader_kws: dict[Any],
@@ -50,6 +52,10 @@ def run(
     dataset = data["dataset"]
     time_delay_test = dataset["time_delay1"]
 
+    U, S, Vh = np.linalg.svd(time_delay_test, full_matrices=False)
+
+    V_scaled = data_transformer.transform(Vh.T)
+
     if (
         train.tensors[0].device == "CPU"
         or val.tensors[0] == "CPU"
@@ -82,12 +88,49 @@ def run(
         loss_criterion=loss,
         device=DEVICE,
         lags=lags,
-        epoch_test_dataset=time_delay_test,
-        **model_trainer_kws
+        V_test_dataset=V_scaled,
+        **model_trainer_kws,
     )
 
     plot_train_loss(train_losses)
     plot_reconstruction_loss(reconstruction_errors)
+
+    V_scaled_tensor = torch.Tensor(V_scaled).to(DEVICE)
+    lstm_model.eval()
+    with torch.no_grad():
+        V_lstm_scaled = construct_Vlstm(
+            V=V_scaled_tensor, 
+            model=lstm_model,
+            lags=lags,
+            device=DEVICE
+        )
+        Vhat, V = reconstruct_V(
+            V_scaled=V_scaled_tensor,
+            model=lstm_model,
+            t_len=len(V_scaled_tensor),
+            lags=lags,
+            device=DEVICE)
+    
+    def torch_diff(A,B):
+        return torch.linalg.norm(A-B,"fro")/ torch.linalg.norm(A,"fro")
+
+    print("Ike:", torch_diff(V,V_lstm_scaled))
+    print("Johnson:", torch_diff(V,Vhat))
+
+
+    V_lstm_np = data_transformer.inverse_transform(V_lstm_scaled.cpu().numpy())
+    Vhat_np = data_transformer.inverse_transform(Vhat.cpu().numpy())
+
+    def np_diff(A,B):
+        return np.linalg.norm(A-B)/np.linalg.norm(A)
+    
+    print("Ike2:", np_diff(Vh.T, V_lstm_np))
+    print("Johnson2:", np_diff(Vh.T, Vhat_np))
+
+    time_delay_lstm = (U*S)@(V_lstm_np.T)
+
+    plot_time_delay_lstm(time_delay_lstm)
+
 
     results = {
         "train_losses": train_losses,
@@ -97,7 +140,7 @@ def run(
     }
     
 
-    return {"main": train_losses[-1], "data": results}
+    return {"main": (train_losses[-1],reconstruction_errors[-1]), "data": results}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:
@@ -122,6 +165,17 @@ def plot_reconstruction_loss(reconstruction_loss: Float1D) -> Figure:
     ax.grid(True)
     return fig
 
+def construct_Vlstm(
+        V: torch.Tensor, model: LSTMModel,lags:int ,device: Literal["cuda"]
+)->torch.Tensor:
+    nx, nt = V.shape
+    V_lstm = torch.zeros((nx,nt)).to(device)
+    V_lstm[:lags] = V[:lags]
+    for idx in range(nt-lags):
+        pred = model(V[idx:idx+lags].unsqueeze(0))
+        V_lstm[idx:idx+lags] = pred
+    return V_lstm
+
 
 def set_seed(seed: int):
     torch.manual_seed(seed)
@@ -132,3 +186,13 @@ def set_seed(seed: int):
 
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+def plot_time_delay_lstm(time_delay: Float2D):
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cax = ax.imshow(time_delay, aspect='auto')  
+    fig.colorbar(cax, ax=ax, orientation='vertical')  
+    ax.set_title("Time Delay Matrix")
+    ax.set_xlabel("Time Steps")
+    ax.set_ylabel("Features")
+    plt.tight_layout()  
+    plt.show()

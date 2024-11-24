@@ -21,7 +21,7 @@ def run(data: dict):
     ax[0].set_xlabel("space", fontsize=12)
     ax[0].set_ylabel("Time", fontsize=12)
 
-    # plot Dmd Reconstruction
+    # plot Dmd Reconstruction w/o hankel 
     d=2
     dmd = DMD(svd_rank=4)
     delay_dmd = hankel_preprocessing(dmd,d=d)
@@ -35,13 +35,11 @@ def run(data: dict):
     ax[2].set_title("DMD + LSTM", fontsize=15)
     ax[2].set_xlabel("space", fontsize=12)
 
+    # plot DMD reconstruction w hankel
+
     # plot DMD+lstm
-    ...
     fig.colorbar(im0,ax=ax[0])
     fig.colorbar(im1,ax=ax[1])
-
-    # Regular LSTM 
-    ...
 
     # Do train/test split to see rollout 
 
