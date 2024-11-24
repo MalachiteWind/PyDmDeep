@@ -10,4 +10,5 @@ lstm_train_lookup = {
     "opt": {"SGD": (optim.SGD, {"lr": 0.01})}, # (opt, opt keywords)
     "loss": {"MSE": nn.MSELoss},
     "dataloader_kws": {"small_batch": {"batch_size": 50, "shuffle": True}},
+    "model_trainer_kws": {"low_min_decrease": {"minimum_loss_decrease": 1e-8, "patience":10}}
 }

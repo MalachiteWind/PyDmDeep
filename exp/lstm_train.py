@@ -1,5 +1,6 @@
 import warnings
 from typing import Any
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,6 +23,7 @@ def run(
     num_layers: int,
     num_epochs: int,
     seed: int,
+    model_trainer_kws: Optional[dict] = None,
 ):
     """
     Train and create LSTM model on right singular vectors of time delay matrix.
@@ -68,6 +70,9 @@ def run(
     optimizer = opt(lstm_model.parameters(), **opt_kws)
     loss = loss()
 
+    if not model_trainer_kws:
+        model_trainer_kws = {"minimum_loss_decrease": 1e-5, "patience": 10}
+
     train_dataloader = DataLoader(dataset=train, **dataloader_kws)
     train_losses, reconstruction_errors = model_trainer(
         model=lstm_model,
@@ -78,6 +83,7 @@ def run(
         device=DEVICE,
         lags=lags,
         epoch_test_dataset=time_delay_test,
+        **model_trainer_kws
     )
 
     plot_train_loss(train_losses)
