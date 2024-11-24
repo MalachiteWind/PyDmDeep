@@ -44,7 +44,7 @@ def run(
 
     # Load data
     train, val, test = data["tensor_dataset"]
-    min_max_scalar = data["transformer"]
+    data_transformer = data["transformer"]
     dataset = data["dataset"]
     time_delay_test = dataset["time_delay1"]
 
