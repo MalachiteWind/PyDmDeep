@@ -22,6 +22,7 @@ def run(
     opt: tuple[torch.optim.Optimizer, dict[Any]],
     loss: nn.Module,
     dataloader_kws: dict[Any],
+    hidden_size: int,
     num_layers: int,
     num_epochs: int,
     seed: int,
@@ -70,9 +71,10 @@ def run(
     # instantiate model
     _, _, d_in = train.tensors[0].shape 
     _, d_out = train.tensors[1].shape
+
     lstm_model = LSTMModel(
         input_size=d_in,
-        hidden_size=d_out,
+        hidden_size=hidden_size,
         output_size=d_out,
         num_layers=num_layers,
     ).to(DEVICE)
@@ -156,7 +158,7 @@ def run(
     results = {
         "train_losses": train_losses,
         "reconstruction": reconstruction_errors,
-        "lstm_mode": lstm_model,
+        "lstm_model": lstm_model,
         "prev_data": data
     }
     

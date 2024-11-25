@@ -10,6 +10,7 @@ lstm_train_lookup = {
     "opt": {
         "SGD": (optim.SGD, {"lr": 0.01}),
         "SGD_05": (optim.SGD, {"lr": 0.05}),
+        "ADAM": (optim.Adam, {"lr": 1e-2}),
         }, # (opt, opt keywords)
     "loss": {"MSE": nn.MSELoss},
     "dataloader_kws": {"small_batch": {"batch_size": 50, "shuffle": True}},
