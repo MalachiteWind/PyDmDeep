@@ -112,6 +112,8 @@ def run(
     if not target_is_statespace:
         plot_reconstruction_loss(reconstruction_errors)
 
+    # Replace reconsturction error with validation error? 
+
 
     # Reconstruct original statespace
     V_scaled_tensor = torch.Tensor(V_scaled).to(DEVICE)
@@ -154,12 +156,15 @@ def run(
     print(f"target_is_statespace: {target_is_statespace}")
     plot_time_delay_lstm(time_delay_lstm_np)
 
+    # Display test error on test set. 
+
 
     results = {
         "train_losses": train_losses,
         "reconstruction": reconstruction_errors,
         "lstm_model": lstm_model,
-        "prev_data": data
+        "prev_data": data,
+        "time_delay_lstm_np": time_delay_lstm_np,
     }
     
 
