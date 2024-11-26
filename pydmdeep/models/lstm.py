@@ -18,6 +18,8 @@ class LSTMModel(nn.Module):
         super(LSTMModel, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.input_size = input_size
+        self.output_size = output_size
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
 
@@ -38,14 +40,15 @@ def model_trainer(
     loss_criterion: nn.Module,
     device: Literal["cuda", "CPU"],
     lags: int,
-    V_test_dataset: Float2D,
+    V_test_dataset: Optional[Float2D]=None,
     minimum_loss_decrease: float = 1e-5,
     patience: int = 10,
-) -> Float1D:
+) -> tuple[Float1D,Float1D]:
     '''
     V_test_dataset: shape = (nt,nx)
     '''
-    t_len = V_test_dataset.shape[0]
+    if V_test_dataset is not None:
+        t_len = V_test_dataset.shape[0]
     best_loss = np.inf
     patience_counter = 0
     epoch_losses = []
@@ -65,21 +68,22 @@ def model_trainer(
             epoch_loss += loss.item()
         epoch_loss /= len(dataloader)
 
-        model.eval()
+        if V_test_dataset is not None:
+            model.eval()
 
-        with torch.no_grad():
-            Vhat, V = reconstruct_V(
-                V_scaled=V_test_dataset,
-                model=model,
-                t_len=t_len,
-                lags=lags,
-                device=DEVICE
-            )
+            with torch.no_grad():
+                Vhat, V = reconstruct_V(
+                    V_scaled=V_test_dataset,
+                    model=model,
+                    t_len=t_len,
+                    lags=lags,
+                    device=DEVICE
+                )
 
-            reconstruct_err = torch.linalg.norm(Vhat - V, ord="fro") / torch.linalg.norm(V,ord="fro")
-            reconstruct_losses.append(reconstruct_err.item())
-        
-        model.train()
+                reconstruct_err = torch.linalg.norm(Vhat - V, ord="fro") / torch.linalg.norm(V,ord="fro")
+                reconstruct_losses.append(reconstruct_err.item())
+            
+            model.train()
 
         if best_loss - epoch_loss >= minimum_loss_decrease:
             best_loss = epoch_loss
