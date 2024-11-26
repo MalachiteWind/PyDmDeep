@@ -1,6 +1,7 @@
 import warnings
 from typing import List
 from typing import Literal
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +18,14 @@ from pydmdeep.types import Float1D, Float2D, Float3D, Int1D
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
 
-def run(seed: int, lags: int, train_len: float, scaler: Literal["minmax","std"]):
+def run(
+        seed: int, 
+        lags: int, 
+        train_len: float, 
+        scaler: Literal["minmax","std"],
+        target_is_statespace: bool,
+        k_modes: Optional[int]=None,
+):
     """
     Create train/val/test TensorDataset to be passed through LSTM network.
 
@@ -26,31 +34,55 @@ def run(seed: int, lags: int, train_len: float, scaler: Literal["minmax","std"])
     seed: randomization seed for reproduciabiilty.
     lags: number of right singular vectors to be used for lstm training input.
     train_len: percentage of data to be used for training.
+    scaler: typing of data scaling to use for input and output data.
+    target_is_statespace: True right singular vectors for input and original statespace
+                          for creating training data. False uses right singular vectors
+                          for both input and output training. 
+    k_modes: number of right singular vectors to use for training. Selected after
+             scaling.
     """
     rng = np.random.default_rng(seed=seed)
     if DEVICE == "CPU":
         warnings.warn("Using CPU instead of cuda.", stacklevel=2)
 
     dataset = generate_toy_dataset(tmax=8 * np.pi, nt=129 * 8, nx=65 * 8)
-    U, S, Vh = np.linalg.svd(dataset["time_delay1"],full_matrices=False)
+    time_delay1 = dataset["time_delay1"]
+    U, S, Vh = np.linalg.svd(time_delay1,full_matrices=False)
 
     nx, nt = Vh.shape
+
+    if not k_modes:
+        k_modes = nx
 
     train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
     test_idx = val_idx[1::2]
     val_idx = val_idx[::2]
     if scaler=="minmax":
-        data_transformer = MinMaxScaler()
+        input_scaler = MinMaxScaler()
+        target_scaler = MinMaxScaler()
     elif scaler == "std":
-        data_transformer = StandardScaler()
+        input_scaler = StandardScaler()
+        target_scaler = StandardScaler()
     else:
-        raise ValueError(f"scaler literal: '{scaler}' not accepted.")
+        raise ValueError(f"scaler literal: '{scaler}' not a valid input.")
 
-    data_transformer.fit(Vh.T[train_idx])
+    input_scaler.fit(Vh.T[train_idx])
+    target_scaler.fit(time_delay1.T[train_idx])
 
-    V_scaled = data_transformer.transform(Vh.T)
+    V_scaled = input_scaler.transform(Vh.T)
+    # (nt, nx)
+    time_delay1_scaled = target_scaler.transform(time_delay1.T)
 
-    data_seq_in, data_seq_out = _create_data_seq(V_scaled, lags=lags)
+    if target_is_statespace:
+        data_seq_in, data_seq_out = _create_data_seq(
+            data_in=V_scaled[:,:k_modes], 
+            data_out=time_delay1_scaled,
+            lags=lags)
+    else:
+        data_seq_in, data_seq_out = _create_data_seq(
+            data_in=V_scaled[:,:k_modes],
+            lags=lags
+        )
 
     train, val, test = create_tensor_data(
         data_seq_in, data_seq_out, idxs=[train_idx, val_idx, test_idx], device=DEVICE
@@ -58,9 +90,12 @@ def run(seed: int, lags: int, train_len: float, scaler: Literal["minmax","std"])
 
     results = {
         "tensor_dataset": (train, val, test),
-        "transformer": data_transformer,
+        "input_scaler": input_scaler,
+        "target_scaler": target_scaler,
+        "k_modes": k_modes,
         "dataset": dataset,
         "lags": lags,
+        "target_is_statespace": target_is_statespace
     }
 
     explained_variance = S**2 / np.sum(S**2)
@@ -96,14 +131,19 @@ def create_tensor_data(
     return tensor_datasets
 
 
-def _create_data_seq(data: Float2D, lags: int) -> tuple[Float3D, Float2D]:
+def _create_data_seq(
+        data_in: Float2D,
+        data_out: Optional[Float2D]=None, 
+        lags: int=1
+) -> tuple[Float3D, Float2D]:
     """
     Convert dataset into data sequences (both input and output targets) for LSTM
     learning.
 
     Parameters:
     ----------
-    data: matrix containing timeseries (nt,nx)
+    data_in: matrix containing timeseries (nt,nx_in)
+    data_out: Optional data_out mapping (nt, nx_out)
     lags: size of input mapping to be created for data_seq_in
 
     Returns:
@@ -111,13 +151,17 @@ def _create_data_seq(data: Float2D, lags: int) -> tuple[Float3D, Float2D]:
     data_seq_in: sequence inputs
     data_seq_out: target labels for sequences.
     """
-    nt, nx = data.shape
-    data_seq_in = np.zeros((nt - lags, lags, nx))
-    data_seq_out = np.zeros(((nt - lags, nx)))
+    nt, nx_in = data_in.shape
+    if data_out is None:
+        data_out = data_in
+    nt, nx_out = data_out.shape
+    data_seq_in = np.zeros((nt - lags, lags, nx_in))
+    data_seq_out = np.zeros(((nt - lags, nx_out)))
     for idx in range(nt - lags):
-        data_seq_in[idx] = data[idx : idx + lags]
-        data_seq_out[idx] = data[idx + lags]
+        data_seq_in[idx] = data_in[idx : idx + lags]
+        data_seq_out[idx] = data_out[idx + lags]
     return data_seq_in, data_seq_out
+
 
 
 def _train_val_idxs(
