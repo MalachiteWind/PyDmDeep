@@ -35,27 +35,26 @@ class LSTMModel(nn.Module):
 def model_trainer(
     model: LSTMModel,
     epochs: int,
-    dataloader: DataLoader,
+    train_dataloader: DataLoader,
+    val_dataloader: DataLoader,
     optimizer: torch.optim.Optimizer,
     loss_criterion: nn.Module,
     device: Literal["cuda", "CPU"],
-    lags: int,
-    V_test_dataset: Optional[Float2D]=None,
     minimum_loss_decrease: float = 1e-5,
     patience: int = 10,
 ) -> tuple[Float1D,Float1D]:
     '''
-    V_test_dataset: shape = (nt,nx)
+    train lstm model.
     '''
-    if V_test_dataset is not None:
-        t_len = V_test_dataset.shape[0]
+  
     best_loss = np.inf
     patience_counter = 0
     epoch_losses = []
-    reconstruct_losses = []
+    val_error = []
     for epoch in range(epochs):
+        model.train()
         epoch_loss = 0.0
-        for data, target in dataloader:
+        for data, target in train_dataloader:
             data, target = data.to(device), target.to(device)
 
             optimizer.zero_grad()
@@ -66,24 +65,20 @@ def model_trainer(
             optimizer.step()
 
             epoch_loss += loss.item()
-        epoch_loss /= len(dataloader)
+        epoch_loss /= len(train_dataloader)
 
-        if V_test_dataset is not None:
-            model.eval()
+        model.eval()
+        with torch.no_grad():
+            epoch_err = 0
+            for data, target in val_dataloader:
+                data, target = data.to(device), target.to(device)
 
-            with torch.no_grad():
-                Vhat, V = reconstruct_V(
-                    V_scaled=V_test_dataset,
-                    model=model,
-                    t_len=t_len,
-                    lags=lags,
-                    device=DEVICE
-                )
+                target_pred = model(data)
+                epoch_err += torch.linalg.norm(
+                    target-target_pred,ord = "fro") / torch.linalg.norm(target)
+    
+            val_error.append(epoch_err.cpu() / len(val_dataloader))
 
-                reconstruct_err = torch.linalg.norm(Vhat - V, ord="fro") / torch.linalg.norm(V,ord="fro")
-                reconstruct_losses.append(reconstruct_err.item())
-            
-            model.train()
 
         if best_loss - epoch_loss >= minimum_loss_decrease:
             best_loss = epoch_loss
@@ -100,7 +95,7 @@ def model_trainer(
             break
         epoch_losses.append(epoch_loss)
 
-    return np.array(epoch_losses), np.array(reconstruct_losses)
+    return np.array(epoch_losses), np.array(val_error)
 
 
 def reconstruct_V(
