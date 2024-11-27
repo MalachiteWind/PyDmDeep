@@ -1,11 +1,9 @@
 from typing import Literal
-from typing import Optional
 
 import numpy as np
 import torch.nn as nn
 import torch.optim.optimizer
 from torch.utils.data import DataLoader
-from sklearn.preprocessing import MinMaxScaler
 
 from ..types import Float1D
 from ..types import Float2D
@@ -42,11 +40,11 @@ def model_trainer(
     device: Literal["cuda", "CPU"],
     minimum_loss_decrease: float = 1e-5,
     patience: int = 10,
-) -> tuple[Float1D,Float1D]:
-    '''
+) -> tuple[Float1D, Float1D]:
+    """
     train lstm model.
-    '''
-  
+    """
+
     best_loss = np.inf
     patience_counter = 0
     epoch_losses = []
@@ -75,10 +73,10 @@ def model_trainer(
 
                 target_pred = model(data)
                 epoch_err += torch.linalg.norm(
-                    target-target_pred,ord = "fro") / torch.linalg.norm(target)
-    
-            val_error.append(epoch_err.cpu() / len(val_dataloader))
+                    target - target_pred, ord="fro"
+                ) / torch.linalg.norm(target)
 
+            val_error.append(epoch_err.cpu() / len(val_dataloader))
 
         if best_loss - epoch_loss >= minimum_loss_decrease:
             best_loss = epoch_loss
@@ -99,16 +97,16 @@ def model_trainer(
 
 
 def reconstruct_V(
-    V_scaled: Float2D, 
-    model: LSTMModel, 
-    t_len: int, 
-    lags: int, 
+    V_scaled: Float2D,
+    model: LSTMModel,
+    t_len: int,
+    lags: int,
     device: str,
 ) -> tuple[Float2D, Float2D]:
-    '''
+    """
     time_delay: shape=(nx,nt)
-    '''
-    num_predicted_steps = t_len - lags 
+    """
+    num_predicted_steps = t_len - lags
     V = torch.Tensor(V_scaled).to(device)
     Vhat = V[:lags, :]
     Vhat = torch.Tensor(Vhat)

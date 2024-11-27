@@ -15,7 +15,7 @@ import pydmdeep.post as post
 post.run()
 ```
 
-Or run specific post submodules for specific figures, _i.e._, 
+Or run specific post submodules for specific figures, _i.e._,
 ```python
 post.propsal_figures.run()
 ```
