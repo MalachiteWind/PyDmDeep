@@ -22,6 +22,7 @@ def run(
         seed: int, 
         lags: int, 
         train_len: float, 
+        rand: bool,
         scaler: Literal["minmax","std"],
         target_is_statespace: bool,
         k_modes: Optional[int]=None,
@@ -34,6 +35,7 @@ def run(
     seed: randomization seed for reproduciabiilty.
     lags: number of right singular vectors to be used for lstm training input.
     train_len: percentage of data to be used for training.
+    rand: shuffle or sequential indicies. 
     scaler: typing of data scaling to use for input and output data.
     target_is_statespace: True right singular vectors for input and original statespace
                           for creating training data. False uses right singular vectors
@@ -41,7 +43,6 @@ def run(
     k_modes: number of right singular vectors to use for training. Selected after
              scaling.
     """
-    rng = np.random.default_rng(seed=seed)
     if DEVICE == "CPU":
         warnings.warn("Using CPU instead of cuda.", stacklevel=2)
 
@@ -53,8 +54,12 @@ def run(
 
     if not k_modes:
         k_modes = nx
+    if rand:
+        rng = np.random.default_rng(seed=seed)
+        train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
+    else: 
+        train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len)
 
-    train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
     test_idx = val_idx[1::2]
     val_idx = val_idx[::2]
     if scaler=="minmax":
@@ -165,14 +170,15 @@ def _create_data_seq(
 
 
 def _train_val_idxs(
-    n_len: int, train_len: float, rng: Generator
+    n_len: int, train_len: float, rng: Optional[Generator]=None
 ) -> tuple[Int1D, Int1D]:
     """
     Create train and val/test indices for n_len indices where train_len indicates
     number of indices to be used for training.
     """
     idxs = np.arange(n_len)
-    rng.shuffle(idxs)
+    if rng is not None:
+        rng.shuffle(idxs)
     n_train = int(n_len * train_len)
     return idxs[:n_train], idxs[n_train:]
 

@@ -2,7 +2,10 @@ import warnings
 from typing import Any
 from typing import Optional
 from typing import Literal
+from typing import cast
 
+
+from torch.utils.data import TensorDataset
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -49,6 +52,11 @@ def run(
 
     # Load data
     train, val, test = data["tensor_dataset"]
+    train, val, test = (
+        cast(TensorDataset, train), 
+        cast(TensorDataset, val), 
+        cast(TensorDataset, test)
+    )
     input_scaler = data["input_scaler"]
     target_scaler = data["target_scaler"]
     k_modes = data["k_modes"]
@@ -94,25 +102,20 @@ def run(
 
     # Train model
     train_dataloader = DataLoader(dataset=train, **dataloader_kws)
-    train_losses, reconstruction_errors = model_trainer(
+    val_dataloader = DataLoader(dataset=val,  batch_size=len(val), shuffle=False)
+    train_losses, val_error = model_trainer(
         model=lstm_model,
         epochs=num_epochs,
-        dataloader=train_dataloader,
+        train_dataloader=train_dataloader,
+        val_dataloader=val_dataloader,
         optimizer=optimizer,
         loss_criterion=loss,
         device=DEVICE,
-        lags=lags,
-        V_test_dataset=V_test_dataset,
         **model_trainer_kws,
     )
 
     plot_train_loss(train_losses)
-
-    # returns empty array if target_is_statespace == True
-    if not target_is_statespace:
-        plot_reconstruction_loss(reconstruction_errors)
-
-    # Replace reconsturction error with validation error? 
+    plot_val_err(val_error)
 
 
     # Reconstruct original statespace
@@ -154,21 +157,40 @@ def run(
         time_delay_lstm_np = time_delay_lstm_np.T
         
     print(f"target_is_statespace: {target_is_statespace}")
-    plot_time_delay_lstm(time_delay_lstm_np)
+    plot_time_delay_lstm(
+        x_grid=dataset["xgrid"][:-1],
+        t_grid=dataset["tgrid"][:-1],
+        time_delay=time_delay_lstm_np
+    )
 
     # Display test error on test set. 
+    test_dataloader = DataLoader(test, batch_size=len(test), shuffle=False)
+    lstm_model.eval()
+    test_err = 0
+    with torch.no_grad():
+        for test_data, test_target in test_dataloader:
+            test_data, test_target = test_data.to(DEVICE), test_target.to(DEVICE)
+            test_target_pred = lstm_model(test_data)
+            test_err += torch.linalg.norm(
+                test_target_pred-test_target, ord="fro"
+            )/ torch.linalg.norm(test_target, ord="fro")
+
+    test_err /= len(test_dataloader)
+    print(f"Test Error: {test_err}")
+
 
 
     results = {
         "train_losses": train_losses,
-        "reconstruction": reconstruction_errors,
+        "val_error": val_error,
+        "test_error": test_err,
         "lstm_model": lstm_model,
         "prev_data": data,
         "time_delay_lstm_np": time_delay_lstm_np,
     }
     
 
-    return {"main": train_losses[-1], "data": results}
+    return {"main": test_err, "data": results}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:
@@ -182,13 +204,13 @@ def plot_train_loss(train_loss: Float1D) -> Figure:
     ax.grid(True)
     return fig
 
-def plot_reconstruction_loss(reconstruction_loss: Float1D) -> Figure:
+def plot_val_err(val_error: Float1D) -> Figure:
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    ax.plot(reconstruction_loss, label="error", color="b", linewidth=2)
+    ax.plot(val_error, label="error", color="b", linewidth=2)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Error")
-    ax.set_title("Reconstruction Error")
+    ax.set_title("Validation Error")
     ax.legend()
     ax.grid(True)
     return fig
@@ -205,15 +227,18 @@ def set_seed(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def plot_time_delay_lstm(time_delay: Float2D):
-    fig, ax = plt.subplots(figsize=(8, 6))
-    cax = ax.imshow(time_delay, aspect='auto')  
-    fig.colorbar(cax, ax=ax, orientation='vertical')  
-    ax.set_title("Time Delay Matrix")
-    ax.set_xlabel("Features")
-    ax.set_ylabel("Time steps")
-    plt.tight_layout()  
+def plot_time_delay_lstm(x_grid: Float2D, t_grid: Float2D,time_delay: Float2D):
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    img = ax.pcolor(x_grid,t_grid, time_delay)
+    ax.set_title("LSTM full reconstruction")
+    ax.set_xlabel("Feature Space")
+    ax.set_ylabel("Time evolution")
+
+    fig.colorbar(img,ax=ax)
+    plt.tight_layout()
     plt.show()
+
 
 def construct_prediction(
         V:torch.Tensor,
