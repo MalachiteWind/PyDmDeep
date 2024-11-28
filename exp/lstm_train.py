@@ -1,19 +1,19 @@
 import warnings
 from typing import Any
-from typing import Optional
-from typing import Literal
 from typing import cast
+from typing import Literal
+from typing import Optional
 
-
-from torch.utils.data import TensorDataset
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
 from matplotlib.figure import Figure
 from torch.utils.data import DataLoader
+from torch.utils.data import TensorDataset
 
-from pydmdeep.models.lstm import LSTMModel, model_trainer, reconstruct_V
+from pydmdeep.models.lstm import LSTMModel
+from pydmdeep.models.lstm import model_trainer
 from pydmdeep.types import Float1D
 from pydmdeep.types import Float2D
 
@@ -53,9 +53,9 @@ def run(
     # Load data
     train, val, test = data["tensor_dataset"]
     train, val, test = (
-        cast(TensorDataset, train), 
-        cast(TensorDataset, val), 
-        cast(TensorDataset, test)
+        cast(TensorDataset, train),
+        cast(TensorDataset, val),
+        cast(TensorDataset, test),
     )
     input_scaler = data["input_scaler"]
     target_scaler = data["target_scaler"]
@@ -77,7 +77,7 @@ def run(
         warnings.warn("Using CPU instead of cuda.", stacklevel=2)
 
     # instantiate model
-    _, _, d_in = train.tensors[0].shape 
+    _, _, d_in = train.tensors[0].shape
     _, d_out = train.tensors[1].shape
 
     lstm_model = LSTMModel(
@@ -93,16 +93,10 @@ def run(
 
     if not model_trainer_kws:
         model_trainer_kws = {"minimum_loss_decrease": 1e-5, "patience": 10}
-    
-    # does not reconstruct orig statespace in model_trainer
-    if target_is_statespace:
-        V_test_dataset = None
-    else:
-        V_test_dataset = V_scaled[:,:k_modes]
 
     # Train model
     train_dataloader = DataLoader(dataset=train, **dataloader_kws)
-    val_dataloader = DataLoader(dataset=val,  batch_size=len(val), shuffle=False)
+    val_dataloader = DataLoader(dataset=val, batch_size=len(val), shuffle=False)
     train_losses, val_error = model_trainer(
         model=lstm_model,
         epochs=num_epochs,
@@ -117,18 +111,14 @@ def run(
     plot_train_loss(train_losses)
     plot_val_err(val_error)
 
-
     # Reconstruct original statespace
     V_scaled_tensor = torch.Tensor(V_scaled).to(DEVICE)
     lstm_model.eval()
     with torch.no_grad():
         lstm_prediction = construct_prediction(
-            V=V_scaled_tensor[:,:k_modes],
-            model=lstm_model,
-            lags=lags,
-            device=DEVICE
+            V=V_scaled_tensor[:, :k_modes], model=lstm_model, lags=lags, device=DEVICE
         )
-    
+
     if target_is_statespace:
         time_delay_lstm = lstm_prediction
         # Unscale prediction
@@ -137,7 +127,7 @@ def run(
         )
         # tack on first lags (nt, nx)
         time_delay_lstm_np = np.vstack(
-            (time_delay_test.T[:lags,:],time_delay_lstm_np)
+            (time_delay_test.T[:lags, :], time_delay_lstm_np)
         )
 
     else:
@@ -147,23 +137,23 @@ def run(
         V_lstm_scaled_np = V_lstm_scaled.cpu().numpy()
 
         inter_mat = np.zeros_like(Vh.T)
-        inter_mat[lags:,:k_modes] = V_lstm_scaled_np
+        inter_mat[lags:, :k_modes] = V_lstm_scaled_np
 
         V_lstm_unscaled_np = input_scaler.inverse_transform(inter_mat)
-        V_lstm_unscaled_np[:lags,:k_modes] = Vh[:k_modes,:lags].T
-        V_lstm_unscaled_np[:,k_modes:] = 0
+        V_lstm_unscaled_np[:lags, :k_modes] = Vh[:k_modes, :lags].T
+        V_lstm_unscaled_np[:, k_modes:] = 0
 
-        time_delay_lstm_np = (U*S)@(V_lstm_unscaled_np.T)
+        time_delay_lstm_np = (U * S) @ (V_lstm_unscaled_np.T)
         time_delay_lstm_np = time_delay_lstm_np.T
-        
+
     print(f"target_is_statespace: {target_is_statespace}")
     plot_time_delay_lstm(
         x_grid=dataset["xgrid"][:-1],
         t_grid=dataset["tgrid"][:-1],
-        time_delay=time_delay_lstm_np
+        time_delay=time_delay_lstm_np,
     )
 
-    # Display test error on test set. 
+    # Display test error on test set.
     test_dataloader = DataLoader(test, batch_size=len(test), shuffle=False)
     lstm_model.eval()
     test_err = 0
@@ -172,13 +162,11 @@ def run(
             test_data, test_target = test_data.to(DEVICE), test_target.to(DEVICE)
             test_target_pred = lstm_model(test_data)
             test_err += torch.linalg.norm(
-                test_target_pred-test_target, ord="fro"
-            )/ torch.linalg.norm(test_target, ord="fro")
+                test_target_pred - test_target, ord="fro"
+            ) / torch.linalg.norm(test_target, ord="fro")
 
     test_err /= len(test_dataloader)
     print(f"Test Error: {test_err}")
-
-
 
     results = {
         "train_losses": train_losses,
@@ -188,9 +176,8 @@ def run(
         "prev_data": data,
         "time_delay_lstm_np": time_delay_lstm_np,
     }
-    
 
-    return {"main": test_err, "data": results}
+    return {"main": test_err.cpu(), "data": results}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:
@@ -204,6 +191,7 @@ def plot_train_loss(train_loss: Float1D) -> Figure:
     ax.grid(True)
     return fig
 
+
 def plot_val_err(val_error: Float1D) -> Figure:
     fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -216,7 +204,6 @@ def plot_val_err(val_error: Float1D) -> Figure:
     return fig
 
 
-
 def set_seed(seed: int):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -227,30 +214,28 @@ def set_seed(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def plot_time_delay_lstm(x_grid: Float2D, t_grid: Float2D,time_delay: Float2D):
+
+def plot_time_delay_lstm(x_grid: Float2D, t_grid: Float2D, time_delay: Float2D):
     fig, ax = plt.subplots(figsize=(6, 6))
 
-    img = ax.pcolor(x_grid,t_grid, time_delay)
+    img = ax.pcolor(x_grid, t_grid, time_delay)
     ax.set_title("LSTM full reconstruction")
     ax.set_xlabel("Feature Space")
     ax.set_ylabel("Time evolution")
 
-    fig.colorbar(img,ax=ax)
+    fig.colorbar(img, ax=ax)
     plt.tight_layout()
     plt.show()
 
 
 def construct_prediction(
-        V:torch.Tensor,
-        model: LSTMModel, 
-        lags:int, 
-        device: Literal["cuda"]
-)->torch.Tensor:
-    nt,_ = V.shape
+    V: torch.Tensor, model: LSTMModel, lags: int, device: Literal["cuda"]
+) -> torch.Tensor:
+    nt, _ = V.shape
     nx_out = model.output_size
 
-    pred = torch.zeros((nt-lags,nx_out)).to(device)
-    for idx in range(nt-lags):
-        pred_idx = model(V[idx:idx+lags].unsqueeze(0))
+    pred = torch.zeros((nt - lags, nx_out)).to(device)
+    for idx in range(nt - lags):
+        pred_idx = model(V[idx : idx + lags].unsqueeze(0))
         pred[idx] = pred_idx
     return pred

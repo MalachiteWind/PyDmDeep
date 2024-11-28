@@ -13,19 +13,22 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import TensorDataset
 
 from pydmdeep.data import generate_toy_dataset
-from pydmdeep.types import Float1D, Float2D, Float3D, Int1D
+from pydmdeep.types import Float1D
+from pydmdeep.types import Float2D
+from pydmdeep.types import Float3D
+from pydmdeep.types import Int1D
 
 DEVICE = "cuda" if torch.cuda.is_available() else "CPU"
 
 
 def run(
-        seed: int, 
-        lags: int, 
-        train_len: float, 
-        rand: bool,
-        scaler: Literal["minmax","std"],
-        target_is_statespace: bool,
-        k_modes: Optional[int]=None,
+    seed: int,
+    lags: int,
+    train_len: float,
+    rand: bool,
+    scaler: Literal["minmax", "std"],
+    target_is_statespace: bool,
+    k_modes: Optional[int] = None,
 ):
     """
     Create train/val/test TensorDataset to be passed through LSTM network.
@@ -35,11 +38,11 @@ def run(
     seed: randomization seed for reproduciabiilty.
     lags: number of right singular vectors to be used for lstm training input.
     train_len: percentage of data to be used for training.
-    rand: shuffle or sequential indicies. 
+    rand: shuffle or sequential indices.
     scaler: typing of data scaling to use for input and output data.
     target_is_statespace: True right singular vectors for input and original statespace
                           for creating training data. False uses right singular vectors
-                          for both input and output training. 
+                          for both input and output training.
     k_modes: number of right singular vectors to use for training. Selected after
              scaling.
     """
@@ -48,7 +51,7 @@ def run(
 
     dataset = generate_toy_dataset(tmax=8 * np.pi, nt=129 * 8, nx=65 * 8)
     time_delay1 = dataset["time_delay1"]
-    U, S, Vh = np.linalg.svd(time_delay1,full_matrices=False)
+    U, S, Vh = np.linalg.svd(time_delay1, full_matrices=False)
 
     nx, nt = Vh.shape
 
@@ -57,12 +60,12 @@ def run(
     if rand:
         rng = np.random.default_rng(seed=seed)
         train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len, rng=rng)
-    else: 
+    else:
         train_idx, val_idx = _train_val_idxs(nt - lags, train_len=train_len)
 
     test_idx = val_idx[1::2]
     val_idx = val_idx[::2]
-    if scaler=="minmax":
+    if scaler == "minmax":
         input_scaler = MinMaxScaler()
         target_scaler = MinMaxScaler()
     elif scaler == "std":
@@ -80,13 +83,11 @@ def run(
 
     if target_is_statespace:
         data_seq_in, data_seq_out = _create_data_seq(
-            data_in=V_scaled[:,:k_modes], 
-            data_out=time_delay1_scaled,
-            lags=lags)
+            data_in=V_scaled[:, :k_modes], data_out=time_delay1_scaled, lags=lags
+        )
     else:
         data_seq_in, data_seq_out = _create_data_seq(
-            data_in=V_scaled[:,:k_modes],
-            lags=lags
+            data_in=V_scaled[:, :k_modes], lags=lags
         )
 
     train, val, test = create_tensor_data(
@@ -100,7 +101,8 @@ def run(
         "k_modes": k_modes,
         "dataset": dataset,
         "lags": lags,
-        "target_is_statespace": target_is_statespace
+        "target_is_statespace": target_is_statespace,
+        "train_len": train_len
     }
 
     explained_variance = S**2 / np.sum(S**2)
@@ -137,9 +139,7 @@ def create_tensor_data(
 
 
 def _create_data_seq(
-        data_in: Float2D,
-        data_out: Optional[Float2D]=None, 
-        lags: int=1
+    data_in: Float2D, data_out: Optional[Float2D] = None, lags: int = 1
 ) -> tuple[Float3D, Float2D]:
     """
     Convert dataset into data sequences (both input and output targets) for LSTM
@@ -168,9 +168,8 @@ def _create_data_seq(
     return data_seq_in, data_seq_out
 
 
-
 def _train_val_idxs(
-    n_len: int, train_len: float, rng: Optional[Generator]=None
+    n_len: int, train_len: float, rng: Optional[Generator] = None
 ) -> tuple[Int1D, Int1D]:
     """
     Create train and val/test indices for n_len indices where train_len indicates
