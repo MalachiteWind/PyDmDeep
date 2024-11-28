@@ -102,6 +102,7 @@ def run(
         "dataset": dataset,
         "lags": lags,
         "target_is_statespace": target_is_statespace,
+        "train_len": train_len
     }
 
     explained_variance = S**2 / np.sum(S**2)

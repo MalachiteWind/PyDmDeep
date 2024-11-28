@@ -177,7 +177,7 @@ def run(
         "time_delay_lstm_np": time_delay_lstm_np,
     }
 
-    return {"main": test_err, "data": results}
+    return {"main": test_err.cpu(), "data": results}
 
 
 def plot_train_loss(train_loss: Float1D) -> Figure:
