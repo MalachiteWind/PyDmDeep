@@ -28,7 +28,7 @@ def run(data: dict[Any]):
     X_train = X[:train_idx]
     X_train_scaled = target_scaler.transform(X_train)
 
-    fig, ax = plt.subplots(nrows=1, ncols=5, figsize=(16, 5))
+    fig, ax = plt.subplots(nrows=1, ncols=5, figsize=(20, 5))
     ax = ax.flatten()
 
     # plot original data
@@ -130,7 +130,15 @@ def run(data: dict[Any]):
     fig.colorbar(im3, ax=ax[3])
     fig.colorbar(im4, ax=ax[4])
 
-    return {"main": errors}
+    constructed_data = {
+        "X": X,
+        "X_dmd": X_dmd,
+        "X_delay_dmd": X_delay_dmd,
+        "X_lstm": X_lstm,
+        "X_dmd_lstm": X_dmd_lstm,
+    }
+
+    return {"main": errors, "data": constructed_data}
 
 def L2_err(X: Float2D, X_pred: Float2D) -> float: 
     return np.linalg.norm(X-X_pred) / np.linalg.norm(X)
