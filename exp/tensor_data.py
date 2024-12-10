@@ -51,7 +51,7 @@ def run(
 
     dataset = generate_toy_dataset(tmax=8 * np.pi, nt=129 * 8, nx=65 * 8)
     time_delay1 = dataset["time_delay1"]
-    U, S, Vh = np.linalg.svd(time_delay1, full_matrices=False)
+    _, S, Vh = np.linalg.svd(time_delay1, full_matrices=False)
 
     nx, nt = Vh.shape
 

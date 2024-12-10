@@ -95,6 +95,10 @@ def generate_toy_dataset(
     Y1 = time_delays["time_delay1"]
     Y2 = time_delays["time_delay2"]
 
+    # Construct noisy 
+    time_delays_noise = _construct_time_delay(Xn.T)
+    Y1_noise = time_delays_noise["time_delay1"]
+    Y2_noise = time_delays_noise["time_delay2"]
     return ToyDataSet(
         data=X,
         time_delay1=Y1,
