@@ -22,6 +22,8 @@ class LSTMModel(nn.Module):
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
+        DEVICE = next(self.parameters()).device
+
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(DEVICE)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(DEVICE)
 

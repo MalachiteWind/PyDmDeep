@@ -1,0 +1,9 @@
+digraph {
+	dpi=300 fillcolor=lightblue fontname=Helvetica fontsize=10 node_shape=box style=filled
+	edge [fontname=Helvetica fontsize=8]
+	LSTM1 [label="LSTM Layer 1"]
+	LSTM2 [label="LSTM Layer 2"]
+	FC [label="Fully Connected Layer"]
+	LSTM1 -> LSTM2 [label="hidden state"]
+	LSTM2 -> FC [label=output]
+}
